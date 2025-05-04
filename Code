@@ -1,1 +1,65 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>  // For I2C LCD
 
+#ifdef ESP8266
+#define D4 2  // GPIO2 is labeled D4 on NodeMCU boards
+#endif
+
+// DS18B20 Setup
+const int oneWireBus = D4; 
+OneWire oneWire(oneWireBus);
+DallasTemperature sensors(&oneWire);
+
+// LCD Setup (I2C Address: 0x27 or 0x3F for most 20x4 LCDs)
+LiquidCrystal_I2C lcd(0x27, 20, 4);  // 20 columns, 4 rows
+
+#define NO_EXTRA_4K_HEAP  // Prevents auto-reset issues
+
+void setup() {
+  Serial.begin(115200);
+  sensors.begin();
+  
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp Monitor");
+  lcd.setCursor(0, 1);
+  lcd.print("Initializing...");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  sensors.requestTemperatures(); 
+  float tempC = sensors.getTempCByIndex(0);
+  
+  if(tempC != DEVICE_DISCONNECTED_C) {
+    // Serial Monitor Output
+    Serial.print("Temperature: ");
+    Serial.print(tempC);
+    Serial.println(" °C");
+    
+    // LCD Output
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.print(tempC);
+    lcd.print((char)223);  // Degree symbol
+    lcd.print("C      ");  // Clear trailing chars
+    
+    lcd.setCursor(0, 1);
+    lcd.print("      ");    // Clear previous Fahrenheit
+    lcd.setCursor(0, 1);
+    lcd.print("F: ");
+    lcd.print((tempC * 9.0 / 5.0) + 32.0);
+    lcd.print((char)223);
+    lcd.print("F");
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("Sensor Error!   ");
+  }
+  
+  delay(5000);  // Update every 5 seconds
+}
